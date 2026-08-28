@@ -33,7 +33,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [token, setToken] = useState(syncSettings.token);
   const [targetId, setTargetId] = useState(syncSettings.targetId);
   const [customUrl, setCustomUrl] = useState(syncSettings.customUrl || '');
-  
+  const [projectPath, setProjectPath] = useState(syncSettings.projectPath || '');
+
   const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -46,6 +47,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setToken(syncSettings.token);
       setTargetId(syncSettings.targetId);
       setCustomUrl(syncSettings.customUrl || '');
+      setProjectPath(syncSettings.projectPath || '');
       setStatus('idle');
       setErrorMessage('');
     }
@@ -60,7 +62,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setErrorMessage('');
 
     if (provider === 'none') {
-      onSaveSyncSettings({ provider: 'none', token: '', targetId: '', customUrl: '' });
+      onSaveSyncSettings({ provider: 'none', token: '', targetId: '', customUrl: '', projectPath: '' });
       setTesting(false);
       setStatus('success');
       return;
@@ -79,6 +81,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         token: token.trim(),
         targetId: targetId.trim(),
         customUrl: provider === 'gitlab' ? customUrl.trim() : undefined,
+        projectPath: provider === 'gitlab' ? projectPath.trim() : undefined,
       };
 
       const finalId = await onTestSync(activeSettings);
@@ -213,6 +216,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           setToken('');
                           setTargetId('');
                           setCustomUrl('');
+                          setProjectPath('');
                         }
                       }}
                       className={`py-2 px-3 text-xs font-medium rounded-xl border capitalize transition-all ${
@@ -255,6 +259,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onChange={(e) => setCustomUrl(e.target.value)}
                         placeholder="https://gitlab.com"
                         className="w-full bg-slate-100/50 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/80 placeholder-slate-400 dark:placeholder-slate-600 transition"
+                      />
+                    </div>
+                  )}
+
+                  {/* Project path — switches sync to project snippets */}
+                  {provider === 'gitlab' && (
+                    <div className="space-y-1.5">
+                      <label className="font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.gitlabProject}</label>
+                      <input
+                        type="text"
+                        value={projectPath}
+                        onChange={(e) => setProjectPath(e.target.value)}
+                        placeholder={t.gitlabProjectPlaceholder}
+                        className="w-full bg-slate-100/50 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/80 placeholder-slate-400 dark:placeholder-slate-600 transition font-mono"
                       />
                     </div>
                   )}
