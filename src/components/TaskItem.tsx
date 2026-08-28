@@ -29,6 +29,33 @@ interface TaskItemProps {
   onContextMenu?: (e: React.MouseEvent) => void;
 }
 
+const renderTextWithLinks = (text: string): React.ReactNode => {
+  if (!text) return null;
+  const urlRegex = /((?:https?:\/\/|www\.)[^\s]+?(?=[.,?!;:)]*(?:\s|$)))/gi;
+  const parts = text.split(urlRegex);
+  return parts.map((part, index) => {
+    const isUrl = /^(?:https?:\/\/|www\.)/i.test(part);
+    if (isUrl) {
+      const href = part.toLowerCase().startsWith('http') ? part : `https://${part}`;
+      return (
+        <a
+          key={index}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 export const TaskItem: React.FC<TaskItemProps> = ({
   task,
   projects,
@@ -42,6 +69,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDraggable, setIsDraggable] = useState(true);
 
   // Edit fields state
   const [editTitle, setEditTitle] = useState(task.title);
@@ -105,6 +133,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
       parentTaskId: editParentTaskId || undefined,
     });
     setIsEditing(false);
+    setIsDraggable(true);
   };
 
   const handleCancelEdit = () => {
@@ -117,6 +146,17 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     setEditWaitingOn(task.waitingOn || '');
     setEditParentTaskId(task.parentTaskId || '');
     setIsEditing(false);
+    setIsDraggable(true);
+  };
+
+  const handleToggleExpand = () => {
+    setIsExpanded((prev) => {
+      const next = !prev;
+      if (!next) {
+        setIsDraggable(true);
+      }
+      return next;
+    });
   };
 
   // Subtasks actions
@@ -184,7 +224,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   return (
     <div 
-      draggable={!isEditing && !task.isDeleted}
+      draggable={!isEditing && !task.isDeleted && isDraggable}
       onDragStart={(e) => {
         e.dataTransfer.setData('text/plain', task.id);
         e.dataTransfer.effectAllowed = 'move';
@@ -193,7 +233,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
       className={`glass-panel rounded-2xl p-4 glass-panel-hover transition duration-200 border ${
         task.isDeleted
           ? 'opacity-70 border-slate-205 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/10 cursor-default'
-          : 'cursor-grab active:cursor-grabbing border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-none'
+          : !isDraggable
+            ? 'cursor-default border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-none'
+            : 'cursor-grab active:cursor-grabbing border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-none'
       } ${
         task.completed 
           ? 'opacity-60 border-slate-200 dark:border-slate-900/60' 
@@ -425,11 +467,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             )}
 
             {/* Task Info Area */}
-            <div className="flex-1 min-w-0" onClick={() => setIsExpanded(!isExpanded)}>
+            <div className="flex-1 min-w-0" onClick={handleToggleExpand}>
               <span className={`block text-sm font-semibold truncate cursor-pointer transition ${
                 task.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400'
               }`}>
-                {task.title}
+                {renderTextWithLinks(task.title)}
               </span>
               
               {/* Badges Metadata */}
@@ -554,15 +596,18 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             {/* Actions Menu */}
             <div className="flex items-center gap-1 shrink-0">
               <button
-                onClick={() => setIsExpanded(!isExpanded)}
+                onClick={handleToggleExpand}
                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg transition"
                 title="Toggle details"
               >
                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
-              {!task.isDeleted && (
+               {!task.isDeleted && (
                 <button
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => {
+                    setIsEditing(true);
+                    setIsDraggable(true);
+                  }}
                   className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-indigo-650 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg transition"
                   title="Edit task"
                 >
@@ -581,12 +626,16 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
           {/* Expandable Details Pane */}
           {isExpanded && (
-            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800/80 space-y-4 animate-fade-in text-xs">
+            <div 
+              className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800/80 space-y-4 animate-fade-in text-xs"
+              onMouseEnter={() => setIsDraggable(false)}
+              onMouseLeave={() => setIsDraggable(true)}
+            >
               {/* Task Description */}
               {task.description && (
                 <div className="space-y-1 bg-slate-100 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 rounded-xl p-3">
                   <span className="text-[10px] uppercase font-bold tracking-wide text-slate-500 dark:text-slate-400 block">{t.description}</span>
-                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{task.description}</p>
+                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{renderTextWithLinks(task.description)}</p>
                 </div>
               )}
 
