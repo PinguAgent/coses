@@ -198,8 +198,27 @@ export default function App() {
         break;
       }
     }
-    if (needsMigration) {
-      setAppData((prev) => validateImportedData(prev));
+
+    const hasInbox = appData.projects.some((p) => p.id === 'project-inbox');
+
+    if (needsMigration || !hasInbox) {
+      setAppData((prev) => {
+        let updatedData = needsMigration ? validateImportedData(prev) : prev;
+        const stillNeedsInbox = !updatedData.projects.some((p) => p.id === 'project-inbox');
+        if (stillNeedsInbox) {
+          const inboxProj: Project = {
+            id: 'project-inbox',
+            name: language === 'ca' ? 'Bústia' : 'Inbox',
+            color: '#818cf8',
+            icon: 'Inbox'
+          };
+          updatedData = {
+            ...updatedData,
+            projects: [inboxProj, ...updatedData.projects]
+          };
+        }
+        return updatedData;
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -397,6 +416,7 @@ export default function App() {
 
   // Update Project
   const handleUpdateProject = (projectId: string, updatedFields: Partial<Project>) => {
+    if (projectId === 'project-inbox') return;
     setAppData((prev) => ({
       ...prev,
       projects: prev.projects.map((p) => 
@@ -407,6 +427,7 @@ export default function App() {
 
   // Delete Project (soft-deletes project and its tasks on first call, permanent delete on second call)
   const handleDeleteProject = (projectIdToDelete: string) => {
+    if (projectIdToDelete === 'project-inbox') return;
     setAppData((prev) => {
       const projectToDelete = prev.projects.find((p) => p.id === projectIdToDelete);
       if (projectToDelete?.isDeleted) {
@@ -476,6 +497,7 @@ export default function App() {
 
   // Archive Project
   const handleArchiveProject = (projectId: string) => {
+    if (projectId === 'project-inbox') return;
     setAppData((prev) => {
       // Archive this project and all its subprojects
       const projectsToArchive = [

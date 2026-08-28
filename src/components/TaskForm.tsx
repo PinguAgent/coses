@@ -29,7 +29,51 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  
+
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const formRef = React.useRef<HTMLFormElement>(null);
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 1. If pressing Escape, collapse form if focused inside it
+      if (e.key === 'Escape') {
+        if (formRef.current && formRef.current.contains(document.activeElement)) {
+          (document.activeElement as HTMLElement)?.blur();
+          setIsExpanded(false);
+        }
+        return;
+      }
+
+      // 2. Ignore shortcut if user is typing in any text entry field
+      const activeEl = document.activeElement;
+      if (activeEl) {
+        const tagName = activeEl.tagName.toLowerCase();
+        const isEditable =
+          tagName === 'input' ||
+          tagName === 'textarea' ||
+          tagName === 'select' ||
+          activeEl.hasAttribute('contenteditable');
+        if (isEditable) return;
+      }
+
+      // 3. Ignore shortcut if a modal/dialog is open
+      const isModalOpen = !!document.querySelector('.fixed.inset-0.z-50');
+      if (isModalOpen) return;
+
+      // 4. Handle Q for quick-add task
+      if (e.key === 'q' || e.key === 'Q') {
+        e.preventDefault();
+        setIsExpanded(true);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 50);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Filter active projects (exclude deleted and archived)
   const activeProjects = projects.filter((p) => !p.isDeleted && !p.isArchived);
   
@@ -43,10 +87,11 @@ export const TaskForm: React.FC<TaskFormProps> = ({
 
   // Sync state if selected project changes in sidebar
   React.useEffect(() => {
-    if (activeProjectId !== 'all' && activeProjectId !== 'today') {
+    const isRealProject = projects.some((p) => p.id === activeProjectId && !p.isDeleted && !p.isArchived);
+    if (isRealProject) {
       setProjectId(activeProjectId);
     } else {
-      setProjectId(activeProjects[0]?.id || 'project-inbox');
+      setProjectId('project-inbox');
     }
   }, [activeProjectId, projects]);
 
@@ -78,10 +123,11 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     setDueDate('');
     setPriority('low');
     // If not in a specific project view, reset to default project
-    if (activeProjectId === 'all' || activeProjectId === 'today') {
-      setProjectId(activeProjects[0]?.id || 'project-inbox');
-    } else {
+    const isRealProject = activeProjects.some((p) => p.id === activeProjectId);
+    if (isRealProject) {
       setProjectId(activeProjectId);
+    } else {
+      setProjectId('project-inbox');
     }
     setIsExpanded(false);
   };
@@ -94,17 +140,25 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm dark:shadow-none transition-all duration-300">
+    <form ref={formRef} onSubmit={handleSubmit} className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm dark:shadow-none transition-all duration-300">
       <div className="flex items-center gap-3">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={t.addThing}
-          required
-          onFocus={() => setIsExpanded(true)}
-          className="flex-1 bg-transparent border-none text-sm font-semibold focus:outline-none placeholder-slate-400 dark:placeholder-slate-550 text-slate-800 dark:text-slate-100"
-        />
+        <div className="relative flex-1 flex items-center">
+          <input
+            ref={inputRef}
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={t.addThing}
+            required
+            onFocus={() => setIsExpanded(true)}
+            className="flex-1 bg-transparent border-none text-sm font-semibold focus:outline-none placeholder-slate-400 dark:placeholder-slate-550 text-slate-800 dark:text-slate-100"
+          />
+          {!isExpanded && !title && (
+            <kbd className="hidden sm:inline-block absolute right-2 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-850 rounded-md shadow-xs pointer-events-none select-none">
+              Q
+            </kbd>
+          )}
+        </div>
         <button
           type="submit"
           className="bg-indigo-650 text-slate-50 hover:bg-indigo-600 rounded-2xl p-2 shadow-lg shadow-indigo-600/15 transition active:scale-95 cursor-pointer shrink-0"

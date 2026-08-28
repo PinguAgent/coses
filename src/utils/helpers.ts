@@ -100,6 +100,18 @@ export function validateImportedData(data: any): AppData {
     }
   }
 
+  // Ensure project-inbox exists in the imported projects list
+  const hasInbox = projects.some((p) => p.id === 'project-inbox');
+  if (!hasInbox) {
+    const lang = data.language || 'en';
+    projects.unshift({
+      id: 'project-inbox',
+      name: lang === 'ca' ? 'Bústia' : 'Inbox',
+      color: '#818cf8',
+      icon: 'Inbox',
+    });
+  }
+
   return { projects, tasks };
 }
 

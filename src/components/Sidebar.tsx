@@ -121,6 +121,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Split projects into top-level and sub-projects (excluding deleted and archived ones)
   const activeProjects = projects.filter((p) => !p.isDeleted && !p.isArchived);
   const topLevelProjects = activeProjects.filter((p) => !p.parentId);
+
+  // Ensure project-inbox is always at the very top of topLevelProjects
+  const inboxIndex = topLevelProjects.findIndex((p) => p.id === 'project-inbox');
+  if (inboxIndex > 0) {
+    const [inboxProj] = topLevelProjects.splice(inboxIndex, 1);
+    topLevelProjects.unshift(inboxProj);
+  }
+
   const subProjects = activeProjects.filter((p) => p.parentId);
 
   return (
