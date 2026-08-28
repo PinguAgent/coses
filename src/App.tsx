@@ -199,13 +199,14 @@ export default function App() {
       }
     }
 
-    const hasInbox = appData.projects.some((p) => p.id === 'project-inbox');
+    const inboxProj = appData.projects.find((p) => p.id === 'project-inbox');
+    const needsInboxRestore = !inboxProj || inboxProj.isDeleted || inboxProj.isArchived;
 
-    if (needsMigration || !hasInbox) {
+    if (needsMigration || needsInboxRestore) {
       setAppData((prev) => {
         let updatedData = needsMigration ? validateImportedData(prev) : prev;
-        const stillNeedsInbox = !updatedData.projects.some((p) => p.id === 'project-inbox');
-        if (stillNeedsInbox) {
+        const currentInbox = updatedData.projects.find((p) => p.id === 'project-inbox');
+        if (!currentInbox) {
           const inboxProj: Project = {
             id: 'project-inbox',
             name: language === 'ca' ? 'Bústia' : 'Inbox',
@@ -215,6 +216,15 @@ export default function App() {
           updatedData = {
             ...updatedData,
             projects: [inboxProj, ...updatedData.projects]
+          };
+        } else if (currentInbox.isDeleted || currentInbox.isArchived) {
+          updatedData = {
+            ...updatedData,
+            projects: updatedData.projects.map((p) =>
+              p.id === 'project-inbox'
+                ? { ...p, isDeleted: false, isArchived: false }
+                : p
+            )
           };
         }
         return updatedData;

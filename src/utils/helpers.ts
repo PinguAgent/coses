@@ -100,16 +100,25 @@ export function validateImportedData(data: any): AppData {
     }
   }
 
-  // Ensure project-inbox exists in the imported projects list
-  const hasInbox = projects.some((p) => p.id === 'project-inbox');
-  if (!hasInbox) {
-    const lang = data.language || 'en';
+  // Ensure project-inbox exists and is active in the imported projects list
+  const inboxIndex = projects.findIndex((p) => p.id === 'project-inbox');
+  const lang = data.language || 'en';
+  if (inboxIndex === -1) {
     projects.unshift({
       id: 'project-inbox',
       name: lang === 'ca' ? 'Bústia' : 'Inbox',
       color: '#818cf8',
       icon: 'Inbox',
     });
+  } else {
+    const inbox = projects[inboxIndex];
+    if (inbox.isDeleted || inbox.isArchived) {
+      projects[inboxIndex] = {
+        ...inbox,
+        isDeleted: false,
+        isArchived: false,
+      };
+    }
   }
 
   return { projects, tasks };
