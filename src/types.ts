@@ -42,6 +42,13 @@ export interface SyncSettings {
   token: string;
   targetId: string; // Gist ID or Snippet ID
   customUrl?: string; // e.g., self-hosted GitLab instance URL
+  /**
+   * GitLab only. Numeric project ID or full path (e.g. 'eduard.capell/coses').
+   * When set, snippets are read/written as project snippets, which lets a token
+   * be scoped to a single project instead of all personal snippets.
+   * When empty, personal snippets are used.
+   */
+  projectPath?: string;
 }
 
 // AppData represents the core serializable data (projects and tasks)
