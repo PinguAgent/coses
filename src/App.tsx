@@ -64,6 +64,7 @@ export default function App() {
     token: '',
     targetId: '',
     customUrl: '',
+    projectPath: '',
   });
 
   const { projects, tasks } = appData;
@@ -114,7 +115,7 @@ export default function App() {
     }
 
     loadCloudData();
-  }, [syncSettings.provider, syncSettings.targetId, syncSettings.token, syncSettings.customUrl]);
+  }, [syncSettings.provider, syncSettings.targetId, syncSettings.token, syncSettings.customUrl, syncSettings.projectPath]);
 
   // Debounced Auto-Save to Cloud when local data changes
   useEffect(() => {
