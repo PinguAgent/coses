@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import type { Project, PriorityFilter, SyncSettings, Language } from '../types';
 import { translations } from '../utils/translations';
-import { 
-  Inbox, Calendar, Hash, ShieldAlert, Plus, Trash2, Cloud, 
+import {
+  Inbox, Calendar, Hash, ShieldAlert, Plus, Trash2, Cloud,
   Settings, RefreshCw, FolderClosed, CheckSquare,
-  Star, Hourglass, ChevronDown, ChevronRight, Edit, Archive
+  Star, Hourglass, ChevronDown, ChevronRight, Edit, Archive, X
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -17,6 +17,8 @@ interface SidebarProps {
   syncSettings: SyncSettings;
   syncStatus: 'synced' | 'syncing' | 'error' | 'local';
   language: Language;
+  isOpen: boolean;
+  onClose: () => void;
   onSelectProject: (id: string) => void;
   onSelectTag: (tag: string | null) => void;
   onSelectPriority: (priority: PriorityFilter | null) => void;
@@ -47,6 +49,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   syncSettings,
   syncStatus,
   language,
+  isOpen,
+  onClose,
   onSelectProject,
   onSelectTag,
   onSelectPriority,
@@ -86,6 +90,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return () => window.removeEventListener('click', closeMenu);
   }, []);
 
+  // Close the mobile drawer on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const handleAddProjectSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
@@ -123,7 +137,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const subProjects = activeProjects.filter((p) => p.parentId);
 
   return (
-    <div className="w-80 glass-panel border-r border-slate-200/50 dark:border-slate-800/80 flex flex-col h-screen overflow-hidden shrink-0 text-slate-800 dark:text-slate-100">
+    <>
+      {/* Mobile backdrop, only shown while the drawer is open */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="md:hidden fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm animate-fade-in"
+        />
+      )}
+      <div
+        className={`w-80 max-w-[85vw] glass-panel border-r border-slate-200/50 dark:border-slate-800/80 flex flex-col h-screen overflow-hidden shrink-0 text-slate-800 dark:text-slate-100 fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        } md:static md:translate-x-0 md:z-auto md:max-w-none`}
+      >
       {/* App Logo / Header */}
       <div className="p-6 border-b border-slate-200/60 dark:border-slate-850 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -156,7 +182,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
           
           <button
-            onClick={onOpenSettings}
+            onClick={() => { onOpenSettings(); onClose(); }}
             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition flex items-center gap-1"
             title={t.settings}
           >
@@ -166,6 +192,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
               syncStatus === 'error' ? 'text-rose-600 dark:text-rose-500' : 'text-slate-400 dark:text-slate-500'
             }`} />
             <Settings className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Mobile-only close button for the drawer */}
+          <button
+            onClick={onClose}
+            aria-label={t.close}
+            className="md:hidden p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+          >
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -180,6 +215,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onSelectProject('all');
               onSelectTag(null);
               onSelectPriority(null);
+              onClose();
             }}
             className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-xl transition-all ${
               selectedProjectId === 'all' && !selectedTag && !selectedPriority
@@ -201,6 +237,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onSelectProject('today');
               onSelectTag(null);
               onSelectPriority(null);
+              onClose();
             }}
             className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-xl transition-all ${
               selectedProjectId === 'today' && !selectedTag && !selectedPriority
@@ -222,6 +259,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onSelectProject('starred');
               onSelectTag(null);
               onSelectPriority(null);
+              onClose();
             }}
             className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-xl transition-all ${
               selectedProjectId === 'starred' && !selectedTag && !selectedPriority
@@ -243,6 +281,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onSelectProject('waiting');
               onSelectTag(null);
               onSelectPriority(null);
+              onClose();
             }}
             className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-xl transition-all ${
               selectedProjectId === 'waiting' && !selectedTag && !selectedPriority
@@ -264,6 +303,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onSelectProject('logbook');
               onSelectTag(null);
               onSelectPriority(null);
+              onClose();
             }}
             className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-xl transition-all ${
               selectedProjectId === 'logbook' && !selectedTag && !selectedPriority
@@ -290,6 +330,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onSelectProject('trash');
                   onSelectTag(null);
                   onSelectPriority(null);
+                  onClose();
                 }}
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -324,6 +365,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onSelectProject('archive');
                   onSelectTag(null);
                   onSelectPriority(null);
+                  onClose();
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-xl transition-all ${
                   selectedProjectId === 'archive' && !selectedTag && !selectedPriority
@@ -493,6 +535,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           onSelectProject(proj.id);
                           onSelectTag(null);
                           onSelectPriority(null);
+                          onClose();
                         }}
                         className="flex-1 flex items-center gap-2.5 px-2 py-2 text-sm text-left truncate cursor-pointer"
                       >
@@ -591,6 +634,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 onSelectProject(subProj.id);
                                 onSelectTag(null);
                                 onSelectPriority(null);
+                                onClose();
                               }}
                               className="flex-1 flex items-center gap-2 px-3 py-1.5 text-xs text-left truncate cursor-pointer"
                             >
@@ -665,6 +709,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onSelectPriority(isSelected ? null : p);
                     onSelectTag(null);
                     onSelectProject('all');
+                    onClose();
                   }}
                   className={`border rounded-lg py-1.5 px-2 text-xs font-semibold capitalize text-center transition flex flex-col items-center justify-center gap-1.5 cursor-pointer ${colorClass} ${
                     isSelected ? 'ring-2 ring-indigo-500 border-transparent shadow-lg shadow-indigo-500/10' : 'opacity-70 hover:opacity-100'
@@ -694,6 +739,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onSelectTag(isSelected ? null : tag);
                       onSelectPriority(null);
                       onSelectProject('all');
+                      onClose();
                     }}
                     className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg transition-all border cursor-pointer ${
                       isSelected
@@ -710,8 +756,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
       </div>
+      </div>
 
-      {/* Trash context menu */}
+      {/* Trash context menu — rendered outside the drawer so its fixed positioning
+          resolves against the viewport rather than the drawer's transformed box */}
       {trashContextMenu && (
         <div 
           className="fixed z-50 bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-1.5 min-w-[150px] animate-scale-up font-semibold text-slate-700 dark:text-slate-200 backdrop-blur-md"
@@ -776,6 +824,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
       )}
-    </div>
+    </>
   );
 };

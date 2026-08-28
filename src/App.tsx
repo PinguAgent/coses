@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useTransition } from 'react';
+import { Menu } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { TaskForm } from './components/TaskForm';
 import { TaskList } from './components/TaskList';
@@ -75,6 +76,7 @@ export default function App() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<PriorityFilter | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Sync Control State
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error' | 'local'>(
@@ -654,6 +656,8 @@ export default function App() {
   // Extract all active tags (excluding deleted tasks)
   const activeTags = Array.from(new Set(activeTasks.flatMap((t) => t.tags)));
 
+  const t = translations[language];
+
   return (
     <div className="flex bg-[var(--bg-app)] text-[var(--text-main)] h-screen overflow-hidden transition-colors duration-300">
       {/* Sidebar navigation */}
@@ -667,6 +671,8 @@ export default function App() {
         syncSettings={syncSettings}
         syncStatus={syncStatus}
         language={language}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
         onSelectProject={(id) => startTransition(() => setSelectedProjectId(id))}
         onSelectTag={(tag) => startTransition(() => setSelectedTag(tag))}
         onSelectPriority={(p) => startTransition(() => setSelectedPriority(p))}
@@ -681,7 +687,19 @@ export default function App() {
       />
 
       {/* Main Panel Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden p-6 md:p-10 space-y-6">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden p-4 md:p-10 space-y-6">
+        {/* Mobile-only header with hamburger menu */}
+        <div className="md:hidden flex items-center gap-3 -mt-1">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            aria-label={t.menu}
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="font-bold text-base tracking-tight">coses</span>
+        </div>
+
         {/* Task Creation Form */}
         <TaskForm
           projects={projects}
