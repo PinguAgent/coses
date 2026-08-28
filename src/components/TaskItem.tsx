@@ -716,7 +716,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                             )}
                           </div>
                           <p className="text-slate-755 dark:text-slate-300 whitespace-pre-wrap leading-relaxed pr-6">
-                            {comment.text}
+                            {renderTextWithLinks(comment.text)}
                           </p>
                         </div>
                       ))}
