@@ -21,7 +21,7 @@ interface TaskItemProps {
     description: string;
     projectId: string;
     dueDate: string;
-    priority: Priority;
+    priority?: Priority;
     tags: string[];
     waitingOn?: string;
     parentTaskId?: string;
@@ -75,7 +75,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDesc, setEditDesc] = useState(task.description);
   const [editProject, setEditProject] = useState(task.projectId);
-  const [editPriority, setEditPriority] = useState<Priority>(task.priority);
+  const [editPriority, setEditPriority] = useState<Priority | undefined>(task.priority);
   const [editDate, setEditDate] = useState(task.dueDate);
   const [editTags, setEditTags] = useState(task.tags.join(', '));
   const [editWaitingOn, setEditWaitingOn] = useState(task.waitingOn || '');
@@ -214,10 +214,10 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   const handleCyclePriority = (e: React.MouseEvent) => {
     e.stopPropagation(); // Avoid triggering card expand
-    const priorities: Priority[] = ['low', 'medium', 'high'];
-    const currentIndex = priorities.indexOf(task.priority);
-    const nextIndex = (currentIndex + 1) % priorities.length;
-    onUpdateTask(task.id, { priority: priorities[nextIndex] });
+    const cycle: (Priority | undefined)[] = [undefined, 'low', 'medium', 'high'];
+    const currentIndex = cycle.indexOf(task.priority);
+    const nextIndex = (currentIndex + 1) % cycle.length;
+    onUpdateTask(task.id, { priority: cycle[nextIndex] });
   };
 
   const getProjectName = (p: Project) => {
@@ -244,7 +244,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         e.dataTransfer.effectAllowed = 'move';
       }}
       onContextMenu={onContextMenu}
-      className={`glass-panel rounded-2xl p-4 glass-panel-hover transition duration-200 border ${
+      className={`group glass-panel rounded-2xl p-4 glass-panel-hover transition duration-200 border ${
         task.isDeleted
           ? 'opacity-70 border-slate-205 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/10 cursor-default'
           : !isDraggable
@@ -318,10 +318,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({
               <div className="space-y-1">
                 <label className="text-slate-500 font-semibold">{t.priority}</label>
                 <select
-                  value={editPriority}
-                  onChange={(e) => setEditPriority(e.target.value as Priority)}
+                  value={editPriority ?? ''}
+                  onChange={(e) => setEditPriority((e.target.value || undefined) as Priority | undefined)}
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 px-2 py-1.5 rounded-lg focus:outline-none focus:border-indigo-500"
                 >
+                  <option value="">{t.noPriority}</option>
                   <option value="low">{t.low}</option>
                   <option value="medium">{t.medium}</option>
                   <option value="high">{t.high}</option>
@@ -511,12 +512,15 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                   } ${
                     task.priority === 'high' ? 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400 hover:border-rose-500/50' :
                     task.priority === 'medium' ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:border-amber-500/50' :
-                    'bg-sky-500/10 border-sky-500/30 text-sky-600 dark:text-sky-400 hover:border-sky-500/50'
+                    task.priority === 'low' ? 'bg-sky-500/10 border-sky-500/30 text-sky-600 dark:text-sky-400 hover:border-sky-500/50' :
+                    'bg-slate-500/10 border-slate-500/30 text-slate-500 dark:text-slate-400 hover:border-slate-500/50 opacity-0 group-hover:opacity-60 hover:!opacity-100'
                   }`}
                   title={task.isDeleted ? undefined : (language === 'ca' ? 'Canvia la Prioritat' : 'Cycle Priority')}
                 >
                   <ShieldAlert className="w-2.5 h-2.5" />
-                  <span>{task.priority === 'high' ? t.high : task.priority === 'medium' ? t.medium : t.low}</span>
+                  {task.priority && (
+                    <span>{task.priority === 'high' ? t.high : task.priority === 'medium' ? t.medium : t.low}</span>
+                  )}
                 </button>
 
                  {/* Due Date Badge Button */}

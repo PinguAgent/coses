@@ -12,6 +12,7 @@ export interface Comment {
 }
 
 export type Priority = 'low' | 'medium' | 'high';
+export type PriorityFilter = Priority | 'none';
 
 export interface Task {
   id: string;
@@ -20,7 +21,7 @@ export interface Task {
   description: string;
   completed: boolean;
   dueDate: string; // YYYY-MM-DD
-  priority: Priority;
+  priority?: Priority;
   tags: string[];
   createdAt: string;
   starred?: boolean;
@@ -67,7 +68,7 @@ export interface AppData {
 export interface AppState extends AppData {
   selectedProjectId: string; // 'all', 'today', or a specific project ID
   selectedTag: string | null;
-  selectedPriority: Priority | null;
+  selectedPriority: PriorityFilter | null;
 }
 
 export type Language = 'en' | 'ca';

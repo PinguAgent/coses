@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Project, Priority, SyncSettings, Language } from '../types';
+import type { Project, PriorityFilter, SyncSettings, Language } from '../types';
 import { translations } from '../utils/translations';
 import { 
   Inbox, Calendar, Hash, ShieldAlert, Plus, Trash2, Cloud, 
@@ -11,7 +11,7 @@ interface SidebarProps {
   projects: Project[];
   selectedProjectId: string;
   selectedTag: string | null;
-  selectedPriority: Priority | null;
+  selectedPriority: PriorityFilter | null;
   tasksCount: Record<string, number>;
   activeTags: string[];
   syncSettings: SyncSettings;
@@ -19,7 +19,7 @@ interface SidebarProps {
   language: Language;
   onSelectProject: (id: string) => void;
   onSelectTag: (tag: string | null) => void;
-  onSelectPriority: (priority: Priority | null) => void;
+  onSelectPriority: (priority: PriorityFilter | null) => void;
   onAddProject: (name: string, color: string, parentId?: string) => void;
   onDeleteProject: (id: string) => void;
   onEditProject: (project: Project) => void;
@@ -656,15 +656,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Priority Filter */}
         <div className="space-y-2">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-3">{t.priority}</h4>
-          <div className="grid grid-cols-3 gap-1">
-            {(['high', 'medium', 'low'] as const).map((p) => {
+          <div className="grid grid-cols-2 gap-1">
+            {(['high', 'medium', 'low', 'none'] as const).map((p) => {
               const isSelected = selectedPriority === p && !selectedTag;
-              const colorClass = 
+              const colorClass =
                 p === 'high' ? 'border-rose-500/30 text-rose-600 dark:text-rose-400 bg-rose-500/5 hover:bg-rose-500/10' :
                 p === 'medium' ? 'border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/5 hover:bg-amber-500/10' :
-                'border-sky-500/30 text-sky-600 dark:text-sky-400 bg-sky-500/5 hover:bg-sky-500/10';
+                p === 'low' ? 'border-sky-500/30 text-sky-600 dark:text-sky-400 bg-sky-500/5 hover:bg-sky-500/10' :
+                'border-slate-400/30 text-slate-500 dark:text-slate-400 bg-slate-500/5 hover:bg-slate-500/10';
 
-              const priorityLabel = p === 'high' ? t.high : p === 'medium' ? t.medium : t.low;
+              const priorityLabel = p === 'high' ? t.high : p === 'medium' ? t.medium : p === 'low' ? t.low : t.noPriority;
 
               return (
                 <button

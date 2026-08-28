@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Task, Project, Priority, Language } from '../types';
+import type { Task, Project, Priority, PriorityFilter, Language } from '../types';
 import { translations } from '../utils/translations';
 import { TaskItem } from './TaskItem';
 import { ClipboardList, Award, Trash2, RotateCcw, Search, X, CheckSquare, Archive } from 'lucide-react';
@@ -9,7 +9,7 @@ interface TaskListProps {
   projects: Project[];
   selectedProjectId: string;
   selectedTag: string | null;
-  selectedPriority: Priority | null;
+  selectedPriority: PriorityFilter | null;
   language: Language;
   onToggleComplete: (id: string) => void;
   onUpdateTask: (id: string, updatedFields: Partial<Task>) => void;
@@ -25,7 +25,7 @@ interface TaskListProps {
     description: string;
     projectId: string;
     dueDate: string;
-    priority: Priority;
+    priority?: Priority;
     tags: string[];
     waitingOn?: string;
     parentTaskId?: string;
@@ -236,7 +236,9 @@ export const TaskList: React.FC<TaskListProps> = ({
     }
 
     // Priority filter
-    if (selectedPriority && task.priority !== selectedPriority) {
+    if (selectedPriority === 'none') {
+      if (task.priority) return false;
+    } else if (selectedPriority && task.priority !== selectedPriority) {
       return false;
     }
 
@@ -264,7 +266,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   const getHeaderTitle = () => {
     if (selectedTag) return `${t.tags}: #${selectedTag}`;
     if (selectedPriority) {
-      const label = selectedPriority === 'high' ? t.high : selectedPriority === 'medium' ? t.medium : t.low;
+      const label = selectedPriority === 'high' ? t.high : selectedPriority === 'medium' ? t.medium : selectedPriority === 'low' ? t.low : t.noPriority;
       return `${t.priority}: ${label}`;
     }
     if (selectedProjectId === 'all') return t.allThings;

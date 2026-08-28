@@ -12,7 +12,7 @@ interface TaskFormProps {
     description: string;
     projectId: string;
     dueDate: string;
-    priority: Priority;
+    priority?: Priority;
     tags: string[];
     waitingOn?: string;
   }) => void;
@@ -79,7 +79,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   
   const [projectId, setProjectId] = useState(activeProjectId);
   const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState<Priority>('low');
+  const [priority, setPriority] = useState<Priority | undefined>(undefined);
   const [tagsInput, setTagsInput] = useState('');
   const [waitingOn, setWaitingOn] = useState('');
 
@@ -121,7 +121,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     setTagsInput('');
     setWaitingOn('');
     setDueDate('');
-    setPriority('low');
+    setPriority(undefined);
     // If not in a specific project view, reset to default project
     const isRealProject = activeProjects.some((p) => p.id === activeProjectId);
     if (isRealProject) {
@@ -291,18 +291,19 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                   <span>{t.priority}</span>
                 </label>
                 <div className="flex-1 flex gap-1">
-                  {(['low', 'medium', 'high'] as const).map((p) => {
-                    const label = p === 'high' ? t.high : p === 'medium' ? t.medium : t.low;
+                  {([undefined, 'low', 'medium', 'high'] as const).map((p) => {
+                    const label = p === 'high' ? t.high : p === 'medium' ? t.medium : p === 'low' ? t.low : t.noPriority;
                     return (
                       <button
-                        key={p}
+                        key={p ?? 'none'}
                         type="button"
                         onClick={() => setPriority(p)}
                         className={`flex-1 py-1 rounded-lg border text-[10px] font-semibold uppercase tracking-wider transition ${
                           priority === p
                             ? p === 'high' ? 'bg-rose-500/20 border-rose-500/70 text-rose-650 dark:text-rose-300' :
                               p === 'medium' ? 'bg-amber-500/20 border-amber-500/70 text-amber-650 dark:text-amber-300' :
-                              'bg-sky-500/20 border-sky-500/70 text-sky-650 dark:text-sky-300'
+                              p === 'low' ? 'bg-sky-500/20 border-sky-500/70 text-sky-650 dark:text-sky-300' :
+                              'bg-slate-500/20 border-slate-500/70 text-slate-700 dark:text-slate-300'
                             : 'border-slate-200 dark:border-slate-850 bg-slate-100/50 dark:bg-slate-900/40 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                         }`}
                       >

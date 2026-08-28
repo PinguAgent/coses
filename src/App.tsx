@@ -5,7 +5,7 @@ import { TaskList } from './components/TaskList';
 import { SettingsModal } from './components/SettingsModal';
 import { EditProjectModal } from './components/EditProjectModal';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import type { Project, Task, Priority, SyncSettings, AppData, Language, Theme } from './types';
+import type { Project, Task, Priority, PriorityFilter, SyncSettings, AppData, Language, Theme } from './types';
 import { getInitialData, generateUUID, validateImportedData } from './utils/helpers';
 import { fetchFromCloud, saveToCloud } from './utils/sync';
 
@@ -72,7 +72,7 @@ export default function App() {
   // UI Filters State
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [selectedPriority, setSelectedPriority] = useState<Priority | null>(null);
+  const [selectedPriority, setSelectedPriority] = useState<PriorityFilter | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   // Sync Control State
@@ -239,7 +239,7 @@ export default function App() {
     description: string;
     projectId: string;
     dueDate: string;
-    priority: Priority;
+    priority?: Priority;
     tags: string[];
     waitingOn?: string;
     parentTaskId?: string;
