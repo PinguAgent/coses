@@ -176,9 +176,23 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     setNewSubtaskTitle('');
   };
 
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
+  const handleCommentKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleAddComment();
+    }
+  };
+
   // Comments actions
-  const handleAddComment = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddComment = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!newCommentText.trim()) return;
 
     const newComment = {
@@ -244,7 +258,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     >
       {/* Primary Card View */}
       {isEditing ? (
-        <div className="space-y-3.5 text-slate-800 dark:text-slate-100">
+        <div onKeyDown={handleEditKeyDown} className="space-y-3.5 text-slate-800 dark:text-slate-100">
           {/* Editing Panel Header */}
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{t.editTask}</span>
@@ -729,12 +743,13 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                     <div className="w-4 h-4 shrink-0 flex items-center justify-center mt-2.5 pl-0.5">
                       <MessageSquare className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" />
                     </div>
-                    <input
-                      type="text"
+                    <textarea
                       value={newCommentText}
                       onChange={(e) => setNewCommentText(e.target.value)}
                       placeholder={t.addComment}
-                      className="flex-1 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500/60"
+                      rows={1}
+                      onKeyDown={handleCommentKeyDown}
+                      className="flex-1 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 resize-none"
                     />
                     <button
                       type="submit"

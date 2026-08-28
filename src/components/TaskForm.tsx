@@ -95,8 +95,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     }
   }, [activeProjectId, projects]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!title.trim()) return;
 
     // Process comma separated tags
@@ -132,6 +132,13 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     setIsExpanded(false);
   };
 
+  const handleFormKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   const getProjectName = (proj: Project) => {
     if (proj.id === 'project-inbox') return t.inbox;
     if (proj.id === 'project-personal') return t.personal;
@@ -140,7 +147,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   };
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm dark:shadow-none transition-all duration-300">
+    <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm dark:shadow-none transition-all duration-300">
       <div className="flex items-center gap-3">
         <div className="relative flex-1 flex items-center">
           <input
