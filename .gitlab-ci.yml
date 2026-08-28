@@ -1,0 +1,22 @@
+image: node:20-alpine
+
+# Cache node_modules to speed up builds
+cache:
+  paths:
+    - .npm/
+
+before_script:
+  - npm ci --cache .npm --prefer-offline
+
+pages:
+  stage: deploy
+  script:
+    - npm run build
+    # GitLab Pages requires the build output to be in a directory named 'public'
+    - mv dist public
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
+    - master
