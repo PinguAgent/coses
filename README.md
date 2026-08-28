@@ -41,21 +41,51 @@ Coses utilizes lightweight cloud gists and snippets to backup and sync your task
 
 #### Option B: GitLab Snippets
 
-To ensure proper security, you should configure your synchronization using one of these two scoped approaches rather than a legacy token with global `api` access:
+Coses can store its data in either a **project snippet** or a **personal snippet**. The
+choice is made by the **GitLab Project** field in Sync Settings: fill it in for project
+snippets, leave it empty for personal ones.
 
-##### Method 1: Fine-Grained Personal Access Token (Recommended)
-1. Go to your **GitLab Profile Settings** > **Access** > **Personal Access Tokens**.
-2. Select **Fine-grained token** from the **Generate token** dropdown.
-3. Under the **Snippet** resource, select both **Read** and **Update** permissions with **User** access.
-4. Open Coses **Settings** > **Sync Settings**.
-5. Select **GitLab** as your provider (enter your custom GitLab URL if self-hosting).
-6. Paste the Personal Access Token and click **Connect** to automatically configure a private Snippet.
+##### Method 1: Project Snippet (Recommended)
 
-##### Method 2: Project Access Token (Repository-Scoped)
-1. Create a dedicated private GitLab project (e.g., `coses-tasks`).
-2. Go to the project's **Settings** > **Access Tokens** and create a token with the **Maintainer** role and **`api`** scope (restricts the token strictly to this repository).
-3. Create a private **Project Snippet** named `coses-data.json` inside the project and copy its ID from the snippet URL (e.g., `12345`).
-4. In Coses **Settings** > **Sync Settings**, select **GitLab**, paste the Project Access Token, enter the Snippet ID as the **Target ID**, and click **Connect**.
+Scopes the token to a single project rather than to every snippet you own.
+
+1. Pick or create a private GitLab project to hold the data (e.g. `your.name/coses`).
+2. In that project, create a **private snippet** with the filename exactly
+   `coses-data.json` and the content `{"projects":[],"tasks":[]}`. Copy the numeric ID
+   from its URL (`/-/snippets/12345` → `12345`).
+3. Go to **User Settings** > **Access Tokens** and generate a **fine-grained token**.
+   Under **Group and project access**, select that project, then under
+   **Project Features** grant **Snippet: Read, Update**.
+4. Open Coses **Settings** > **Sync Settings** and select **GitLab**. Fill in:
+   - **GitLab Instance URL** — only if self-hosting (e.g. `https://gitlab.example.com`)
+   - **GitLab Project** — the full path, e.g. `your.name/coses`
+   - **Personal Access Token** — the token from step 3
+   - **Snippet ID** — the ID from step 2
+5. Click **Connect**.
+
+##### Method 2: Personal Snippet
+
+1. Create a private snippet at `<your-gitlab>/-/snippets/new` with the filename
+   `coses-data.json`, and copy its numeric ID.
+2. Generate a **fine-grained token** with **User** access, granting
+   **Snippet: Read** and **Snippet: Update**.
+3. In Coses **Settings** > **Sync Settings**, select **GitLab**, leave **GitLab Project**
+   empty, and enter the token and Snippet ID.
+
+> **Note on auto-creation:** leaving **Snippet ID** empty makes Coses create the snippet
+> for you. That needs a third permission, **Snippet: Create** — `Read` and `Update` alone
+> are not enough, since `Update` only covers snippets that already exist. Without it,
+> instances enforcing granular scopes return:
+>
+> ```
+> 403 {"error":"insufficient_granular_scope","error_description":"... requires a
+> fine-grained personal access token with the following project permissions:
+> [Snippet: Create]."}
+> ```
+>
+> Fine-grained tokens cannot be given new permissions after creation, so add
+> **Snippet: Create** when generating the token if you want auto-creation. Otherwise
+> create the snippet by hand and supply its ID, as described above.
 
 ---
 
