@@ -4,7 +4,7 @@ import { translations } from '../utils/translations';
 import { 
   Check, Trash2, Calendar, ShieldAlert, Tag, Edit, Save, 
   X, ChevronDown, ChevronUp, CornerDownRight, CheckSquare, Square,
-  Star, Hourglass
+  Star, Hourglass, MessageSquare
 } from 'lucide-react';
 import { generateUUID } from '../utils/helpers';
 
@@ -43,6 +43,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   // Subtask field state
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+
+  // Comment field state
+  const [newCommentText, setNewCommentText] = useState('');
 
   const dateInputRef = useRef<HTMLInputElement>(null);
 
@@ -134,6 +137,28 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const handleDeleteSubtask = (subtaskId: string) => {
     const updatedSubtasks = task.subtasks.filter((st) => st.id !== subtaskId);
     onUpdateTask(task.id, { subtasks: updatedSubtasks });
+  };
+
+  // Comments actions
+  const handleAddComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCommentText.trim()) return;
+
+    const newComment = {
+      id: generateUUID(),
+      text: newCommentText.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    onUpdateTask(task.id, {
+      comments: [...(task.comments || []), newComment],
+    });
+    setNewCommentText('');
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    const updatedComments = (task.comments || []).filter((c) => c.id !== commentId);
+    onUpdateTask(task.id, { comments: updatedComments });
   };
 
   const handleCyclePriority = (e: React.MouseEvent) => {
@@ -471,6 +496,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                   </span>
                 )}
 
+                {/* Comments count indicator */}
+                {task.comments && task.comments.length > 0 && (
+                  <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded-full shrink-0 font-mono text-[9px]">
+                    <MessageSquare className="w-2.5 h-2.5 text-slate-400 dark:text-slate-500" />
+                    <span>{task.comments.length}</span>
+                  </span>
+                )}
+
                 {/* Tags */}
                 {task.tags.map((tag) => (
                   <span key={tag} className="flex items-center gap-0.5 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 px-1.5 py-0.25 rounded-md shrink-0">
@@ -584,6 +617,68 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                     {t.add}
                   </button>
                 </form>
+              </div>
+
+              {/* Comments Section */}
+              <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-800/80">
+                <span className="text-[10px] uppercase font-bold tracking-wide text-slate-500 dark:text-slate-400 block">{t.comments}</span>
+                
+                {/* List of comments */}
+                {task.comments && task.comments.length > 0 && (
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {[...task.comments]
+                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                      .map((comment) => (
+                        <div 
+                          key={comment.id} 
+                          className="group relative flex flex-col gap-1 py-2 px-3 bg-slate-50/50 dark:bg-slate-900/10 border border-slate-200 dark:border-slate-800/40 rounded-xl hover:border-slate-300 dark:hover:border-slate-750 transition duration-150"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500">
+                              {new Date(comment.createdAt).toLocaleString(language === 'ca' ? 'ca' : 'en', {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })}
+                            </span>
+                            {!task.isDeleted && (
+                              <button
+                                onClick={() => handleDeleteComment(comment.id)}
+                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg transition"
+                                title={t.deleteComment}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-slate-755 dark:text-slate-300 whitespace-pre-wrap leading-relaxed pr-6">
+                            {comment.text}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                )}
+
+                {/* Comment Creation Form */}
+                {!task.isDeleted && (
+                  <form onSubmit={handleAddComment} className="flex gap-2">
+                    <div className="w-4 h-4 shrink-0 flex items-center justify-center mt-2.5 pl-0.5">
+                      <MessageSquare className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" />
+                    </div>
+                    <input
+                      type="text"
+                      value={newCommentText}
+                      onChange={(e) => setNewCommentText(e.target.value)}
+                      placeholder={t.addComment}
+                      className="flex-1 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500/60"
+                    />
+                    <button
+                      type="submit"
+                      className="px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-250 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-350 dark:hover:border-slate-700 text-slate-505 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold transition"
+                    >
+                      {t.add}
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           )}

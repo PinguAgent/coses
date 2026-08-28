@@ -73,6 +73,15 @@ export function validateImportedData(data: any): AppData {
           isDeleted: typeof t.isDeleted === 'boolean' ? t.isDeleted : false,
           deletedWithProject: typeof t.deletedWithProject === 'boolean' ? t.deletedWithProject : false,
           completedAt: typeof t.completedAt === 'string' ? t.completedAt : undefined,
+          comments: Array.isArray(t.comments)
+            ? t.comments
+                .filter((c: any) => c && typeof c === 'object' && typeof c.text === 'string')
+                .map((c: any) => ({
+                  id: typeof c.id === 'string' ? c.id : generateUUID(),
+                  text: c.text,
+                  createdAt: typeof c.createdAt === 'string' ? c.createdAt : new Date().toISOString(),
+                }))
+            : [],
         });
       }
     }

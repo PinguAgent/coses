@@ -185,8 +185,9 @@ export const TaskList: React.FC<TaskListProps> = ({
       const tagMatch = task.tags.some((tag) => tag.toLowerCase().includes(query));
       const waiteeMatch = task.waitingOn?.toLowerCase().includes(query);
       const subtaskMatch = task.subtasks.some((st) => st.title.toLowerCase().includes(query));
+      const commentMatch = task.comments?.some((c) => c.text.toLowerCase().includes(query));
 
-      if (!titleMatch && !descMatch && !tagMatch && !waiteeMatch && !subtaskMatch) {
+      if (!titleMatch && !descMatch && !tagMatch && !waiteeMatch && !subtaskMatch && !commentMatch) {
         return false;
       }
     }

@@ -204,6 +204,7 @@ export default function App() {
       ...newTask,
       completed: false,
       subtasks: [],
+      comments: [],
       createdAt: new Date().toISOString(),
     };
     setAppData((prev) => ({

@@ -5,6 +5,12 @@ export interface Subtask {
   starred?: boolean;
 }
 
+export interface Comment {
+  id: string;
+  text: string;
+  createdAt: string; // ISO 8601 string containing date and time
+}
+
 export type Priority = 'low' | 'medium' | 'high';
 
 export interface Task {
@@ -23,6 +29,7 @@ export interface Task {
   isDeleted?: boolean;
   deletedWithProject?: boolean;
   completedAt?: string;
+  comments?: Comment[];
 }
 
 export interface Project {
