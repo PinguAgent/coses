@@ -103,7 +103,7 @@ export default function App() {
       try {
         const remoteData = await fetchFromCloud(syncSettings);
         if (remoteData && (remoteData.projects || remoteData.tasks)) {
-          setAppData(remoteData);
+          setAppData(validateImportedData(remoteData));
         }
         setSyncStatus('synced');
       } catch (error) {
@@ -158,7 +158,7 @@ export default function App() {
     try {
       const remoteData = await fetchFromCloud(syncSettings);
       if (remoteData) {
-        setAppData(remoteData);
+        setAppData(validateImportedData(remoteData));
       }
       setSyncStatus('synced');
     } catch (error) {
