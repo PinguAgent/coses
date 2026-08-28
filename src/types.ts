@@ -22,7 +22,6 @@ export interface Task {
   dueDate: string; // YYYY-MM-DD
   priority: Priority;
   tags: string[];
-  subtasks: Subtask[];
   createdAt: string;
   starred?: boolean;
   waitingOn?: string;
@@ -30,6 +29,7 @@ export interface Task {
   deletedWithProject?: boolean;
   completedAt?: string;
   comments?: Comment[];
+  parentTaskId?: string;
 }
 
 export interface Project {

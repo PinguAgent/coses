@@ -189,6 +189,21 @@ export default function App() {
     setSyncStatus(newSettings.provider === 'none' ? 'local' : 'synced');
   };
 
+  // Migrate old data if present on mount
+  useEffect(() => {
+    let needsMigration = false;
+    for (const t of appData.tasks) {
+      if ((t as any).subtasks && (t as any).subtasks.length > 0) {
+        needsMigration = true;
+        break;
+      }
+    }
+    if (needsMigration) {
+      setAppData((prev) => validateImportedData(prev));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Add Task
   const handleAddTask = (newTask: {
     title: string;
@@ -198,12 +213,12 @@ export default function App() {
     priority: Priority;
     tags: string[];
     waitingOn?: string;
+    parentTaskId?: string;
   }) => {
     const taskRecord: Task = {
       id: generateUUID(),
       ...newTask,
       completed: false,
-      subtasks: [],
       comments: [],
       createdAt: new Date().toISOString(),
     };
@@ -215,28 +230,90 @@ export default function App() {
 
   // Toggle Task Completion status (stamping completion date on complete)
   const handleToggleComplete = (id: string) => {
-    setAppData((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => 
-        t.id === id 
-          ? { 
-              ...t, 
-              completed: !t.completed,
-              completedAt: !t.completed ? new Date().toISOString() : undefined
-            } 
-          : t
-      ),
-    }));
+    setAppData((prev) => {
+      const taskToToggle = prev.tasks.find((t) => t.id === id);
+      if (!taskToToggle) return prev;
+
+      const nextCompleted = !taskToToggle.completed;
+      const completedAt = nextCompleted ? new Date().toISOString() : undefined;
+
+      let updatedTasks = [...prev.tasks];
+
+      if (nextCompleted) {
+        // Complete this task and all its descendants
+        const getDescendantIds = (parentId: string): string[] => {
+          const children = updatedTasks.filter((t) => t.parentTaskId === parentId);
+          return children.flatMap((c) => [c.id, ...getDescendantIds(c.id)]);
+        };
+        const descendantIds = getDescendantIds(id);
+        const targetIds = [id, ...descendantIds];
+
+        updatedTasks = updatedTasks.map((t) => 
+          targetIds.includes(t.id)
+            ? { 
+                ...t, 
+                completed: true,
+                completedAt: t.completedAt || completedAt
+              }
+            : t
+        );
+      } else {
+        // Uncomplete this task and all its ancestors
+        const getAncestorIds = (taskId: string): string[] => {
+          const t = updatedTasks.find((task) => task.id === taskId);
+          if (t?.parentTaskId) {
+            return [t.parentTaskId, ...getAncestorIds(t.parentTaskId)];
+          }
+          return [];
+        };
+        const ancestorIds = getAncestorIds(id);
+        const targetIds = [id, ...ancestorIds];
+
+        updatedTasks = updatedTasks.map((t) => 
+          targetIds.includes(t.id)
+            ? { 
+                ...t, 
+                completed: false,
+                completedAt: undefined
+              }
+            : t
+        );
+      }
+
+      return {
+        ...prev,
+        tasks: updatedTasks,
+      };
+    });
   };
 
   // Update Task Fields (inline editing, subtasks checklist edits, etc.)
   const handleUpdateTask = (id: string, updatedFields: Partial<Task>) => {
-    setAppData((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => 
+    setAppData((prev) => {
+      let updatedTasks = prev.tasks.map((t) => 
         t.id === id ? { ...t, ...updatedFields } : t
-      ),
-    }));
+      );
+
+      // If projectId is changed, recursively update all descendants' projectId
+      if (updatedFields.projectId) {
+        const updateDescendantProjects = (parentId: string, projId: string) => {
+          updatedTasks = updatedTasks.map((t) => {
+            if (t.parentTaskId === parentId) {
+              // Update project ID and recurse
+              updateDescendantProjects(t.id, projId);
+              return { ...t, projectId: projId };
+            }
+            return t;
+          });
+        };
+        updateDescendantProjects(id, updatedFields.projectId);
+      }
+
+      return {
+        ...prev,
+        tasks: updatedTasks,
+      };
+    });
   };
 
   // Delete Task (soft-delete on first call, permanent delete on second call)
@@ -244,16 +321,30 @@ export default function App() {
     setAppData((prev) => {
       const taskToDelete = prev.tasks.find((t) => t.id === id);
       if (taskToDelete?.isDeleted) {
-        // Permanent delete
+        // Permanent delete: filter out task and all its descendants
+        const getDescendantIds = (parentId: string): string[] => {
+          const children = prev.tasks.filter((t) => t.parentTaskId === parentId);
+          return children.flatMap((c) => [c.id, ...getDescendantIds(c.id)]);
+        };
+        const deletedIds = [id, ...getDescendantIds(id)];
         return {
           ...prev,
-          tasks: prev.tasks.filter((t) => t.id !== id),
+          tasks: prev.tasks.filter((t) => !deletedIds.includes(t.id)),
         };
       } else {
-        // Soft delete
+        // Soft delete: mark task and all its descendants as isDeleted
+        const getDescendantIds = (parentId: string): string[] => {
+          const children = prev.tasks.filter((t) => t.parentTaskId === parentId);
+          return children.flatMap((c) => [c.id, ...getDescendantIds(c.id)]);
+        };
+        const deletedIds = [id, ...getDescendantIds(id)];
         return {
           ...prev,
-          tasks: prev.tasks.map((t) => t.id === id ? { ...t, isDeleted: true } : t),
+          tasks: prev.tasks.map((t) => 
+            deletedIds.includes(t.id) 
+              ? { ...t, isDeleted: true } 
+              : t
+          ),
         };
       }
     });
@@ -261,10 +352,33 @@ export default function App() {
 
   // Restore Task
   const handleRestoreTask = (id: string) => {
-    setAppData((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => t.id === id ? { ...t, isDeleted: false, deletedWithProject: undefined } : t),
-    }));
+    setAppData((prev) => {
+      const getDescendantIds = (parentId: string): string[] => {
+        const children = prev.tasks.filter((t) => t.parentTaskId === parentId);
+        return children.flatMap((c) => [c.id, ...getDescendantIds(c.id)]);
+      };
+      const descendantIds = getDescendantIds(id);
+      
+      const getParentIds = (taskId: string): string[] => {
+        const t = prev.tasks.find((task) => task.id === taskId);
+        if (t?.parentTaskId) {
+          return [t.parentTaskId, ...getParentIds(t.parentTaskId)];
+        }
+        return [];
+      };
+      const parentIds = getParentIds(id);
+
+      const targetIds = [id, ...descendantIds, ...parentIds];
+
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) => 
+          targetIds.includes(t.id) 
+            ? { ...t, isDeleted: false, deletedWithProject: undefined } 
+            : t
+        ),
+      };
+    });
   };
 
   // Add Project
@@ -484,7 +598,14 @@ export default function App() {
   const tasksCount = {
     all: activeTasks.length,
     today: activeTasks.filter((t) => t.dueDate === new Date().toISOString().split('T')[0]).length,
-    starred: activeTasks.filter((t) => t.starred || t.subtasks.some((st) => st.starred)).length,
+    starred: activeTasks.filter((t) => {
+      if (t.starred) return true;
+      const getDescendantTasks = (tId: string): Task[] => {
+        const children = activeTasks.filter((child) => child.parentTaskId === tId);
+        return children.concat(children.flatMap((c) => getDescendantTasks(c.id)));
+      };
+      return getDescendantTasks(t.id).some((st) => st.starred);
+    }).length,
     waiting: activeTasks.filter((t) => t.waitingOn).length,
     trash: deletedTasks.length,
     logbook: activeTasks.filter((t) => t.completed).length,
@@ -557,6 +678,7 @@ export default function App() {
             onUnarchiveProject={handleUnarchiveProject}
             onSelectProject={(id) => startTransition(() => setSelectedProjectId(id))}
             onReorderTasks={handleReorderTasks}
+            onAddTask={handleAddTask}
           />
         </div>
       </main>

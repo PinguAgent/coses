@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Task, Project, Priority, Subtask, Language } from '../types';
+import type { Task, Project, Priority, Language } from '../types';
 import { translations } from '../utils/translations';
 import { 
   Check, Trash2, Calendar, ShieldAlert, Tag, Edit, Save, 
-  X, ChevronDown, ChevronUp, CornerDownRight, CheckSquare, Square,
+  X, ChevronDown, ChevronUp, CornerDownRight,
   Star, Hourglass, MessageSquare
 } from 'lucide-react';
 import { generateUUID } from '../utils/helpers';
@@ -16,6 +16,16 @@ interface TaskItemProps {
   onUpdateTask: (id: string, updatedFields: Partial<Task>) => void;
   onDeleteTask: (id: string) => void;
   tasks: Task[];
+  onAddTask: (newTask: {
+    title: string;
+    description: string;
+    projectId: string;
+    dueDate: string;
+    priority: Priority;
+    tags: string[];
+    waitingOn?: string;
+    parentTaskId?: string;
+  }) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
 }
 
@@ -27,6 +37,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   onUpdateTask,
   onDeleteTask,
   tasks,
+  onAddTask,
   onContextMenu,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -40,6 +51,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const [editDate, setEditDate] = useState(task.dueDate);
   const [editTags, setEditTags] = useState(task.tags.join(', '));
   const [editWaitingOn, setEditWaitingOn] = useState(task.waitingOn || '');
+  const [editParentTaskId, setEditParentTaskId] = useState(task.parentTaskId || '');
 
   // Subtask field state
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
@@ -54,7 +66,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     if (dateInputRef.current) {
       try {
         dateInputRef.current.showPicker();
-      } catch (err) {
+      } catch {
         // Fallback for older browsers
         dateInputRef.current.focus();
         dateInputRef.current.click();
@@ -71,6 +83,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     setEditDate(task.dueDate);
     setEditTags(task.tags.join(', '));
     setEditWaitingOn(task.waitingOn || '');
+    setEditParentTaskId(task.parentTaskId || '');
   }, [task]);
 
   const t = translations[language];
@@ -89,6 +102,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
       dueDate: editDate,
       tags: updatedTags,
       waitingOn: editWaitingOn.trim() || undefined,
+      parentTaskId: editParentTaskId || undefined,
     });
     setIsEditing(false);
   };
@@ -100,6 +114,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     setEditPriority(task.priority);
     setEditDate(task.dueDate);
     setEditTags(task.tags.join(', '));
+    setEditWaitingOn(task.waitingOn || '');
+    setEditParentTaskId(task.parentTaskId || '');
     setIsEditing(false);
   };
 
@@ -108,35 +124,16 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     e.preventDefault();
     if (!newSubtaskTitle.trim()) return;
 
-    const newSubtask: Subtask = {
-      id: generateUUID(),
+    onAddTask({
       title: newSubtaskTitle.trim(),
-      completed: false,
-    };
-
-    onUpdateTask(task.id, {
-      subtasks: [...task.subtasks, newSubtask],
+      description: '',
+      projectId: task.projectId,
+      dueDate: '',
+      priority: task.priority,
+      tags: [],
+      parentTaskId: task.id,
     });
     setNewSubtaskTitle('');
-  };
-
-  const handleToggleSubtask = (subtaskId: string) => {
-    const updatedSubtasks = task.subtasks.map((st) => 
-      st.id === subtaskId ? { ...st, completed: !st.completed } : st
-    );
-    onUpdateTask(task.id, { subtasks: updatedSubtasks });
-  };
-
-  const handleToggleStarSubtask = (subtaskId: string) => {
-    const updatedSubtasks = task.subtasks.map((st) => 
-      st.id === subtaskId ? { ...st, starred: !st.starred } : st
-    );
-    onUpdateTask(task.id, { subtasks: updatedSubtasks });
-  };
-
-  const handleDeleteSubtask = (subtaskId: string) => {
-    const updatedSubtasks = task.subtasks.filter((st) => st.id !== subtaskId);
-    onUpdateTask(task.id, { subtasks: updatedSubtasks });
   };
 
   // Comments actions
@@ -181,8 +178,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const projectInfo = projects.find((p) => p.id === task.projectId);
 
   // Subtasks progress
-  const completedSubtasks = task.subtasks.filter((st) => st.completed).length;
-  const totalSubtasks = task.subtasks.length;
+  const subtasks = tasks.filter((t) => t.parentTaskId === task.id && !t.isDeleted);
+  const completedSubtasks = subtasks.filter((st) => st.completed).length;
+  const totalSubtasks = subtasks.length;
 
   return (
     <div 
@@ -351,6 +349,45 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                       })}
                     </div>
                   )}
+                </div>
+              );
+            })()}
+
+            {(() => {
+              // Find all potential parent tasks in the same project
+              // Exclude this task and any of its descendants to prevent circular parenting
+              const isDescendant = (parentId: string, childId: string): boolean => {
+                let current = tasks.find((t) => t.id === childId);
+                while (current) {
+                  if (current.parentTaskId === parentId) return true;
+                  current = current.parentTaskId ? tasks.find((t) => t.id === current!.parentTaskId) : undefined;
+                }
+                return false;
+              };
+
+              const potentialParents = tasks.filter(
+                (t) => 
+                  t.id !== task.id && 
+                  !t.isDeleted && 
+                  t.projectId === editProject &&
+                  !isDescendant(task.id, t.id)
+              );
+
+              return (
+                <div className="space-y-1">
+                  <label className="text-slate-500 font-semibold">{t.parentTask}</label>
+                  <select
+                    value={editParentTaskId}
+                    onChange={(e) => setEditParentTaskId(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-205 dark:border-slate-800 text-slate-800 dark:text-slate-200 px-2 py-1.5 rounded-lg focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="">{t.noParent}</option>
+                    {potentialParents.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               );
             })()}
@@ -558,42 +595,21 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                 <span className="text-[10px] uppercase font-bold tracking-wide text-slate-500 dark:text-slate-400 block">{t.subtasks}</span>
                 
                 {/* List of subtasks */}
-                {task.subtasks.length > 0 && (
-                  <div className="space-y-1.5">
-                    {task.subtasks.map((st) => (
-                      <div 
-                        key={st.id} 
-                        className="flex items-center justify-between gap-2.5 py-1 px-2.5 bg-slate-50 dark:bg-slate-900/10 border border-slate-200 dark:border-slate-800/40 rounded-xl hover:border-slate-300 dark:hover:border-slate-750 transition duration-150"
-                      >
-                        <button
-                          onClick={() => handleToggleSubtask(st.id)}
-                          className="flex-1 flex items-center gap-2 text-left truncate text-slate-700 dark:text-slate-300"
-                        >
-                          {st.completed ? (
-                            <CheckSquare className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 shrink-0" />
-                          ) : (
-                            <Square className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600 shrink-0 hover:text-slate-600 dark:hover:text-slate-450" />
-                          )}
-                          <span className={`truncate ${st.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>
-                            {st.title}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStarSubtask(st.id)}
-                          className="p-1 text-slate-400 hover:text-amber-500 transition shrink-0 cursor-pointer"
-                          title={st.starred ? 'Unstar subtask' : 'Star subtask'}
-                        >
-                          <Star className={`w-3.5 h-3.5 ${st.starred ? 'text-amber-550 fill-amber-500' : 'text-slate-400 dark:text-slate-600'}`} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSubtask(st.id)}
-                          className="p-1 text-slate-450 dark:text-slate-600 hover:text-rose-500 transition"
-                          title="Delete subtask"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
+                {subtasks.length > 0 && (
+                  <div className="space-y-3.5 pl-4 border-l-2 border-slate-200/50 dark:border-slate-800 ml-2 mt-2">
+                    {subtasks.map((subtask) => (
+                      <TaskItem
+                        key={subtask.id}
+                        task={subtask}
+                        projects={projects}
+                        language={language}
+                        onToggleComplete={onToggleComplete}
+                        onUpdateTask={onUpdateTask}
+                        onDeleteTask={onDeleteTask}
+                        tasks={tasks}
+                        onAddTask={onAddTask}
+                        onContextMenu={onContextMenu}
+                      />
                     ))}
                   </div>
                 )}

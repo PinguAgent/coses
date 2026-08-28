@@ -20,6 +20,16 @@ interface TaskListProps {
   onUnarchiveProject: (id: string) => void;
   onSelectProject: (id: string) => void;
   onReorderTasks: (draggedId: string, targetId: string) => void;
+  onAddTask: (newTask: {
+    title: string;
+    description: string;
+    projectId: string;
+    dueDate: string;
+    priority: Priority;
+    tags: string[];
+    waitingOn?: string;
+    parentTaskId?: string;
+  }) => void;
 }
 
 type LogbookPeriod = 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'allTime';
@@ -40,6 +50,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onUnarchiveProject,
   onSelectProject,
   onReorderTasks,
+  onAddTask,
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -184,7 +195,13 @@ export const TaskList: React.FC<TaskListProps> = ({
       const descMatch = task.description.toLowerCase().includes(query);
       const tagMatch = task.tags.some((tag) => tag.toLowerCase().includes(query));
       const waiteeMatch = task.waitingOn?.toLowerCase().includes(query);
-      const subtaskMatch = task.subtasks.some((st) => st.title.toLowerCase().includes(query));
+      
+      const getDescendantTasks = (tId: string): Task[] => {
+        const children = tasks.filter((t) => t.parentTaskId === tId);
+        return children.concat(children.flatMap((c) => getDescendantTasks(c.id)));
+      };
+      const descendants = getDescendantTasks(task.id);
+      const subtaskMatch = descendants.some((st) => st.title.toLowerCase().includes(query));
       const commentMatch = task.comments?.some((c) => c.text.toLowerCase().includes(query));
 
       if (!titleMatch && !descMatch && !tagMatch && !waiteeMatch && !subtaskMatch && !commentMatch) {
@@ -198,7 +215,11 @@ export const TaskList: React.FC<TaskListProps> = ({
         const todayStr = new Date().toISOString().split('T')[0];
         if (task.dueDate !== todayStr) return false;
       } else if (selectedProjectId === 'starred') {
-        const hasStarredSubtask = task.subtasks.some((st) => st.starred);
+        const getDescendantTasks = (tId: string): Task[] => {
+          const children = tasks.filter((t) => t.parentTaskId === tId);
+          return children.concat(children.flatMap((c) => getDescendantTasks(c.id)));
+        };
+        const hasStarredSubtask = getDescendantTasks(task.id).some((st) => st.starred);
         if (!task.starred && !hasStarredSubtask) return false;
       } else if (selectedProjectId === 'waiting') {
         if (!task.waitingOn) return false;
@@ -216,6 +237,12 @@ export const TaskList: React.FC<TaskListProps> = ({
 
     // Priority filter
     if (selectedPriority && task.priority !== selectedPriority) {
+      return false;
+    }
+
+    // Only render top-level tasks if we are in a hierarchical view
+    const isFlatView = !!searchQuery.trim() || ['today', 'starred', 'waiting', 'logbook'].includes(selectedProjectId) || !!selectedTag || !!selectedPriority;
+    if (!isFlatView && task.parentTaskId) {
       return false;
     }
 
@@ -541,6 +568,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                     onUpdateTask={onUpdateTask}
                     onDeleteTask={onDeleteTask}
                     tasks={tasks}
+                    onAddTask={onAddTask}
                     onContextMenu={(e) => handleContextMenu(e, task.id, 'task')}
                   />
                 ))}
@@ -570,6 +598,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                 onUpdateTask={onUpdateTask}
                 onDeleteTask={onDeleteTask}
                 tasks={tasks}
+                onAddTask={onAddTask}
                 onContextMenu={(e) => handleContextMenu(e, task.id, 'task')}
               />
             </div>
