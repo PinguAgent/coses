@@ -8,6 +8,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import type { Project, Task, Priority, PriorityFilter, SyncSettings, AppData, Language, Theme } from './types';
 import { getInitialData, generateUUID, validateImportedData } from './utils/helpers';
 import { fetchFromCloud, saveToCloud } from './utils/sync';
+import { translations } from './utils/translations';
 
 export default function App() {
   // 1. Language State
@@ -607,9 +608,9 @@ export default function App() {
         const parsed = JSON.parse(event.target?.result as string);
         const validated = validateImportedData(parsed);
         setAppData(validated);
-        alert('Data imported successfully!');
+        alert(translations[language].importSuccess);
       } catch (err: any) {
-        alert(`Failed to import data: ${err.message || 'Invalid file format'}`);
+        alert(translations[language].importFail(err.message || 'Invalid file format'));
       }
     };
     fileReader.readAsText(file);
@@ -672,8 +673,6 @@ export default function App() {
         onAddProject={handleAddProject}
         onDeleteProject={handleDeleteProject}
         onEditProject={(proj) => setEditingProject(proj)}
-        onExportData={handleExportData}
-        onImportData={handleImportData}
         onOpenSettings={() => setIsSyncModalOpen(true)}
         onTriggerSync={handleTriggerSync}
         onMoveTaskToProject={handleMoveTaskToProject}
@@ -726,6 +725,8 @@ export default function App() {
         onLanguageChange={setLanguage}
         theme={theme}
         onThemeChange={setTheme}
+        onExportData={handleExportData}
+        onImportData={handleImportData}
       />
 
       {editingProject && (

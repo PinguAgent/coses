@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { SyncSettings, SyncProvider, Language, Theme } from '../types';
 import { translations } from '../utils/translations';
 import { 
   X, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, 
-  Sun, Moon, Monitor, Globe, Settings as SettingsIcon 
+  Sun, Moon, Monitor, Globe, Settings as SettingsIcon,
+  Upload, Download
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -16,6 +17,8 @@ interface SettingsModalProps {
   onLanguageChange: (lang: Language) => void;
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
+  onExportData: () => void;
+  onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -28,6 +31,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onLanguageChange,
   theme,
   onThemeChange,
+  onExportData,
+  onImportData,
 }) => {
   const [provider, setProvider] = useState<SyncProvider>(syncSettings.provider);
   const [token, setToken] = useState(syncSettings.token);
@@ -39,7 +44,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const t = translations[language];
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -342,6 +352,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+
+          {/* Section 3: Backup / Restore (Local Backup) */}
+          <div className="space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800/80 pb-2">
+              {t.localBackup}
+            </h4>
+            <div className="flex items-center gap-3">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={onImportData}
+                accept=".json"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={handleImportClick}
+                className="flex-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition text-xs font-bold shadow-sm dark:shadow-none cursor-pointer"
+                title={t.importJsonTitle}
+              >
+                <Upload className="w-4 h-4 text-indigo-500" />
+                <span>{t.importJson}</span>
+              </button>
+              <button
+                type="button"
+                onClick={onExportData}
+                className="flex-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition text-xs font-bold shadow-sm dark:shadow-none cursor-pointer"
+                title={t.exportJsonTitle}
+              >
+                <Download className="w-4 h-4 text-indigo-500" />
+                <span>{t.exportJson}</span>
+              </button>
+            </div>
           </div>
 
         </div>

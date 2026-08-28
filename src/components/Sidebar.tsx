@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Project, PriorityFilter, SyncSettings, Language } from '../types';
 import { translations } from '../utils/translations';
 import { 
   Inbox, Calendar, Hash, ShieldAlert, Plus, Trash2, Cloud, 
-  Download, Upload, Settings, RefreshCw, FolderClosed, CheckSquare,
+  Settings, RefreshCw, FolderClosed, CheckSquare,
   Star, Hourglass, ChevronDown, ChevronRight, Edit, Archive
 } from 'lucide-react';
 
@@ -23,8 +23,6 @@ interface SidebarProps {
   onAddProject: (name: string, color: string, parentId?: string) => void;
   onDeleteProject: (id: string) => void;
   onEditProject: (project: Project) => void;
-  onExportData: () => void;
-  onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenSettings: () => void;
   onTriggerSync: () => void;
   onMoveTaskToProject: (taskId: string, projectId: string) => void;
@@ -55,8 +53,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onAddProject,
   onDeleteProject,
   onEditProject,
-  onExportData,
-  onImportData,
   onOpenSettings,
   onTriggerSync,
   onMoveTaskToProject,
@@ -78,7 +74,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     project: Project;
   } | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const t = translations[language];
 
   // Close context menu on clicks
@@ -98,10 +93,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setNewProjectName('');
     setParentProjectId('');
     setShowAddProject(false);
-  };
-
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
   };
 
   const renderProjectIcon = (id: string) => {
@@ -718,33 +709,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
-      </div>
-
-      {/* Manual Import/Export (Backup) Footer */}
-      <div className="p-4 border-t border-slate-200/60 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between gap-2.5 text-xs font-semibold">
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={onImportData}
-          accept=".json"
-          className="hidden"
-        />
-        <button
-          onClick={handleImportClick}
-          className="flex-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 py-2 rounded-xl flex items-center justify-center gap-2 transition shadow-sm dark:shadow-none cursor-pointer"
-          title="Import tasks from a JSON file"
-        >
-          <Upload className="w-3.5 h-3.5" />
-          <span>{t.importJson}</span>
-        </button>
-        <button
-          onClick={onExportData}
-          className="flex-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 py-2 rounded-xl flex items-center justify-center gap-2 transition shadow-sm dark:shadow-none cursor-pointer"
-          title="Export tasks to a JSON file"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>{t.exportJson}</span>
-        </button>
       </div>
 
       {/* Trash context menu */}
