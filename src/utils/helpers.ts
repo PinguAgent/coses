@@ -189,7 +189,7 @@ export function getInitialData(lang: Language = 'en'): AppData {
       createdAt: new Date().toISOString(),
       subtasks: [
         { id: 'subtask-s-1', title: 'Go to GitHub Gists / GitLab Snippets developer settings', completed: false },
-        { id: 'subtask-s-2', title: 'Create a token with gist (GH) or api (GL) scopes', completed: false },
+        { id: 'subtask-s-2', title: 'Create a token with gist (GH) or api/snippet (GL) scopes', completed: false },
         { id: 'subtask-s-3', title: 'Connect inside settings modal', completed: false },
       ],
     },

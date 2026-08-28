@@ -12,7 +12,10 @@ pages:
   stage: deploy
   script:
     - npm run build
-    # GitLab Pages requires the build output to be in a directory named 'public'
+    # GitLab Pages serves the directory named 'public'. The repo already has a 
+    # 'public/' dir (Vite's static assets, already copied into dist by the build),
+    # so remove it first - otherwise `mv` nests dist inside it.
+    - rm -rf public
     - mv dist public
   artifacts:
     paths:
@@ -20,3 +23,4 @@ pages:
   only:
     - main
     - master
+
