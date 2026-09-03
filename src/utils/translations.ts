@@ -83,6 +83,8 @@ export const translations = {
     importSuccess: 'Data imported successfully!',
     importFail: (msg: string) => `Failed to import data: ${msg}`,
     thingsInView: (count: number) => `${count} ${count === 1 ? 'thing' : 'things'} in this view`,
+    showDone: (count: number) => `Show done (${count})`,
+    hideDone: 'Hide done',
     // Theme & Settings translations
     settings: 'Settings',
     theme: 'Theme',
@@ -181,6 +183,8 @@ export const translations = {
     importSuccess: 'Dades importades correctament!',
     importFail: (msg: string) => `Error al importar dades: ${msg}`,
     thingsInView: (count: number) => `${count} ${count === 1 ? 'cosa' : 'coses'} en aquesta vista`,
+    showDone: (count: number) => `Mostra les fetes (${count})`,
+    hideDone: 'Amaga les fetes',
     // Theme & Settings translations
     settings: 'Configuració',
     theme: 'Tema',
