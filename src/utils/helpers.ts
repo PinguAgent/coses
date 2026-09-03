@@ -421,3 +421,20 @@ export function getInitialData(lang: Language = 'en'): AppData {
   return { projects, tasks };
 }
 
+/**
+ * Collects every descendant of a task (children, grandchildren, and so on).
+ */
+export function getDescendantTasks(tasks: Task[], taskId: string): Task[] {
+  const children = tasks.filter((t) => t.parentTaskId === taskId);
+  return children.concat(children.flatMap((c) => getDescendantTasks(tasks, c.id)));
+}
+
+/**
+ * A task only counts as done once it and all of its descendants are complete.
+ * This keeps a completed parent visible while it still holds pending subtasks,
+ * so hiding done tasks never buries work that is still outstanding.
+ */
+export function isEffectivelyDone(tasks: Task[], task: Task): boolean {
+  if (!task.completed) return false;
+  return getDescendantTasks(tasks, task.id).every((st) => st.isDeleted || st.completed);
+}

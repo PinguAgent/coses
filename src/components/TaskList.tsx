@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, startTransition } from 'react';
 import type { Task, Project, Priority, PriorityFilter, Language } from '../types';
 import { translations } from '../utils/translations';
+import { getDescendantTasks, isEffectivelyDone } from '../utils/helpers';
 import { TaskItem } from './TaskItem';
-import { ClipboardList, Award, Trash2, RotateCcw, Search, X, CheckSquare, Archive } from 'lucide-react';
+import { ClipboardList, Award, Trash2, RotateCcw, Search, X, CheckSquare, Archive, Eye, EyeOff } from 'lucide-react';
 
 interface TaskListProps {
   tasks: Task[];
@@ -85,6 +86,10 @@ export const TaskList: React.FC<TaskListProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [logbookPeriod, setLogbookPeriod] = useState<LogbookPeriod>('thisWeek');
+  const [showDone, setShowDone] = useState(false);
+  // Tasks ticked without leaving the view: they stay listed so completing one
+  // does not yank the row out from under the pointer.
+  const [justCompleted, setJustCompleted] = useState<Set<string>>(new Set());
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const t = translations[language];
@@ -108,6 +113,21 @@ export const TaskList: React.FC<TaskListProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Switching view is what commits the hide: forget the peek and the tasks ticked here
+  useEffect(() => {
+    startTransition(() => {
+      setShowDone(false);
+      setJustCompleted(new Set());
+    });
+  }, [selectedProjectId, selectedTag, selectedPriority]);
+
+  const handleToggleComplete = (id: string) => {
+    startTransition(() => {
+      setJustCompleted((prev) => new Set(prev).add(id));
+    });
+    onToggleComplete(id);
+  };
 
   const handleContextMenu = (e: React.MouseEvent, id: string, type: 'task' | 'project') => {
     if (selectedProjectId !== 'trash') return; // Capture context menu only inside the Trash folder
@@ -164,7 +184,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   };
 
   // Filter Tasks based on active selections + search query
-  const filteredTasks = tasks.filter((task) => {
+  const visibleTasks = tasks.filter((task) => {
     if (selectedProjectId === 'trash') {
       if (!task.isDeleted) return false;
     } else {
@@ -196,11 +216,7 @@ export const TaskList: React.FC<TaskListProps> = ({
       const tagMatch = task.tags.some((tag) => tag.toLowerCase().includes(query));
       const waiteeMatch = task.waitingOn?.toLowerCase().includes(query);
       
-      const getDescendantTasks = (tId: string): Task[] => {
-        const children = tasks.filter((t) => t.parentTaskId === tId);
-        return children.concat(children.flatMap((c) => getDescendantTasks(c.id)));
-      };
-      const descendants = getDescendantTasks(task.id);
+      const descendants = getDescendantTasks(tasks, task.id);
       const subtaskMatch = descendants.some((st) => st.title.toLowerCase().includes(query));
       const commentMatch = task.comments?.some((c) => c.text.toLowerCase().includes(query));
 
@@ -215,11 +231,7 @@ export const TaskList: React.FC<TaskListProps> = ({
         const todayStr = new Date().toISOString().split('T')[0];
         if (task.dueDate !== todayStr) return false;
       } else if (selectedProjectId === 'starred') {
-        const getDescendantTasks = (tId: string): Task[] => {
-          const children = tasks.filter((t) => t.parentTaskId === tId);
-          return children.concat(children.flatMap((c) => getDescendantTasks(c.id)));
-        };
-        const hasStarredSubtask = getDescendantTasks(task.id).some((st) => st.starred);
+        const hasStarredSubtask = getDescendantTasks(tasks, task.id).some((st) => st.starred);
         if (!task.starred && !hasStarredSubtask) return false;
       } else if (selectedProjectId === 'waiting') {
         if (!task.waitingOn) return false;
@@ -251,15 +263,27 @@ export const TaskList: React.FC<TaskListProps> = ({
     return true;
   });
 
+  // Completed tasks are hidden by default everywhere except Logbook (where they *are* the
+  // content) and Trash. An active search sees everything, so finding finished work by name
+  // never depends on the toggle.
+  const hidesDone =
+    selectedProjectId !== 'logbook' && selectedProjectId !== 'trash' && !searchQuery.trim();
+  const filteredTasks =
+    !hidesDone || showDone
+      ? visibleTasks
+      : visibleTasks.filter((task) => !isEffectivelyDone(tasks, task) || justCompleted.has(task.id));
+  const hiddenDoneCount = visibleTasks.length - filteredTasks.length;
+
   // Filter Deleted Projects
   const deletedProjects = projects.filter((p) => p.isDeleted);
 
   // Filter Archived Projects (excluding deleted ones)
   const archivedProjects = projects.filter((p) => p.isArchived && !p.isDeleted);
 
-  // Calculate Progress Stats (exclude from Trash & Logbook views)
-  const totalInView = filteredTasks.length;
-  const completedInView = filteredTasks.filter((t) => t.completed).length;
+  // Calculate Progress Stats (exclude from Trash & Logbook views). Computed from
+  // visibleTasks, before hiding done ones, or the bar would sit at 0% forever.
+  const totalInView = visibleTasks.length;
+  const completedInView = visibleTasks.filter((t) => t.completed).length;
   const progressPercent = totalInView > 0 ? Math.round((completedInView / totalInView) * 100) : 0;
 
   // Header Title
@@ -347,11 +371,11 @@ export const TaskList: React.FC<TaskListProps> = ({
         <div>
           <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{getHeaderTitle()}</h2>
           <p className="text-xs text-slate-500 mt-1">
-            {t.thingsInView(totalInView)}
+            {t.thingsInView(filteredTasks.length)}
           </p>
         </div>
 
-        {/* Right side controls (Search & Progress) */}
+        {/* Right side controls (Search, Show done & Progress) */}
         <div className="flex flex-wrap md:flex-nowrap items-center gap-4 w-full md:w-auto shrink-0 md:justify-end">
           {/* Global Search input */}
           <div className="relative w-full md:w-56 shrink-0">
@@ -379,6 +403,22 @@ export const TaskList: React.FC<TaskListProps> = ({
               </span>
             )}
           </div>
+
+          {/* Show / hide completed tasks */}
+          {hidesDone && (hiddenDoneCount > 0 || showDone) && (
+            <button
+              type="button"
+              onClick={() => setShowDone((prev) => !prev)}
+              className={`shrink-0 flex items-center gap-1.5 py-1.5 px-3 text-xs font-bold rounded-xl border transition cursor-pointer select-none ${
+                showDone
+                  ? 'bg-white dark:bg-slate-900 border-slate-200/50 dark:border-slate-800/60 text-slate-800 dark:text-slate-100 shadow-sm'
+                  : 'bg-slate-100/70 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800/80 text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'
+              }`}
+            >
+              {showDone ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              <span>{showDone ? t.hideDone : t.showDone(hiddenDoneCount)}</span>
+            </button>
+          )}
 
           {/* Progress circle/bar */}
           {totalInView > 0 && selectedProjectId !== 'trash' && selectedProjectId !== 'logbook' && (
@@ -566,7 +606,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                     task={task}
                     projects={projects}
                     language={language}
-                    onToggleComplete={onToggleComplete}
+                    onToggleComplete={handleToggleComplete}
                     onUpdateTask={onUpdateTask}
                     onDeleteTask={onDeleteTask}
                     tasks={tasks}
@@ -596,7 +636,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                 task={task}
                 projects={projects}
                 language={language}
-                onToggleComplete={onToggleComplete}
+                onToggleComplete={handleToggleComplete}
                 onUpdateTask={onUpdateTask}
                 onDeleteTask={onDeleteTask}
                 tasks={tasks}

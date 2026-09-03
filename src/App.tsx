@@ -7,7 +7,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { EditProjectModal } from './components/EditProjectModal';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import type { Project, Task, Priority, PriorityFilter, SyncSettings, AppData, Language, Theme } from './types';
-import { getInitialData, generateUUID, validateImportedData } from './utils/helpers';
+import { getInitialData, generateUUID, validateImportedData, getDescendantTasks, isEffectivelyDone } from './utils/helpers';
 import { fetchFromCloud, saveToCloud } from './utils/sync';
 import { translations } from './utils/translations';
 
@@ -628,27 +628,26 @@ export default function App() {
     return true;
   });
   const deletedTasks = tasks.filter((t) => t.isDeleted);
+  // Lists hide completed tasks, so the badges beside them count pending work only,
+  // using the same rule (a completed parent still holding pending subtasks counts).
+  const pendingTasks = activeTasks.filter((t) => !isEffectivelyDone(tasks, t));
 
   // Calculate project counters (rolling up child sub-project counts into parents, excluding deleted tasks)
   const tasksCount = {
-    all: activeTasks.length,
-    today: activeTasks.filter((t) => t.dueDate === new Date().toISOString().split('T')[0]).length,
-    starred: activeTasks.filter((t) => {
+    all: pendingTasks.length,
+    today: pendingTasks.filter((t) => t.dueDate === new Date().toISOString().split('T')[0]).length,
+    starred: pendingTasks.filter((t) => {
       if (t.starred) return true;
-      const getDescendantTasks = (tId: string): Task[] => {
-        const children = activeTasks.filter((child) => child.parentTaskId === tId);
-        return children.concat(children.flatMap((c) => getDescendantTasks(c.id)));
-      };
-      return getDescendantTasks(t.id).some((st) => st.starred);
+      return getDescendantTasks(activeTasks, t.id).some((st) => st.starred);
     }).length,
-    waiting: activeTasks.filter((t) => t.waitingOn).length,
+    waiting: pendingTasks.filter((t) => t.waitingOn).length,
     trash: deletedTasks.length,
     logbook: activeTasks.filter((t) => t.completed).length,
     ...projects.reduce((acc, proj) => {
       if (proj.isDeleted) return acc;
       const childIds = projects.filter((p) => p.parentId === proj.id && !p.isDeleted).map((p) => p.id);
       const targetProjectIds = [proj.id, ...childIds];
-      acc[proj.id] = activeTasks.filter((t) => targetProjectIds.includes(t.projectId)).length;
+      acc[proj.id] = pendingTasks.filter((t) => targetProjectIds.includes(t.projectId)).length;
       return acc;
     }, {} as Record<string, number>),
   };
